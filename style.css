@@ -9,7 +9,14 @@ body {
 }
 
 h1 {
+    margin-bottom: 10px;
+}
+
+.description {
+    text-align: center;
     margin-bottom: 20px;
+    color: #555;
+    max-width: 600px;
 }
 
 .drop-zone {

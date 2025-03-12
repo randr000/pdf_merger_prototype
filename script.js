@@ -102,9 +102,10 @@ function reorderFiles(){
 async function mergePDFs(pdfBytesArray) {
     const pdfDoc = await PDFDocument.create();
 
-    for (const pdfBytes of pdfBytesArray) {
-      if(typeof pdfBytes === "string"){
-        const imageBytes = await fetch(pdfBytes).then((res) => res.arrayBuffer());
+    for (const fileObject of pdfBytesArray) {
+      if(typeof fileObject === "string"){
+        //if image
+        const imageBytes = await fetch(fileObject).then((res) => res.arrayBuffer());
         const img = await pdfDoc.embedPng(imageBytes);
         const page = pdfDoc.addPage([img.width, img.height]);
         page.drawImage(img, {
@@ -113,8 +114,9 @@ async function mergePDFs(pdfBytesArray) {
           width: img.width,
           height: img.height
         })
-      }else{
-        const pdf = await PDFDocument.load(pdfBytes);
+      }else if (fileObject instanceof ArrayBuffer){
+        //if pdf
+        const pdf = await PDFDocument.load(fileObject);
         const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices());
         copiedPages.forEach((page) => pdfDoc.addPage(page));
       }
@@ -146,7 +148,7 @@ async function checkAndMerge() {
                     reject(error);
                   };
                   reader.readAsDataURL(file);
-                }else{
+                }else {
                   reader.onload = (event) => {
                       resolve(event.target.result);
                   };
