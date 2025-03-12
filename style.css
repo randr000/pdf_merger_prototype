@@ -80,3 +80,27 @@ h1 {
 #download-link:hover {
     background-color: #367c38;
 }
+
+/* Styles for filename input and label */
+label[for="filename"] {
+    margin-top: 20px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+#filename {
+    width: 500px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+#filename:focus {
+    outline: none;
+    border-color: #66afe9;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.075) inset, 0 0 8px rgba(102, 175, 233, 0.6);
+}
