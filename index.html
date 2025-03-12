@@ -5,17 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF Merger</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
 </head>
 <body>
     <h1>PDF Merger</h1>
 
-    <div class="drop-zone-container">
-        <div id="drop-zone-1" class="drop-zone">
-            <p>Drag & Drop First PDF Here</p>
-        </div>
-        <div id="drop-zone-2" class="drop-zone">
-            <p>Drag & Drop Second PDF Here</p>
-        </div>
+    <div id="drop-zone" class="drop-zone">
+        <p>Drag & Drop PDFs Here</p>
+        <ul id="file-list">
+            </ul>
     </div>
 
     <a id="download-link" href="#" download="merged.pdf">Download Merged PDF</a>

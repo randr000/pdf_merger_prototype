@@ -1,16 +1,14 @@
 const { PDFDocument } = PDFLib;
 
-const dropZone1 = document.getElementById('drop-zone-1');
-const dropZone2 = document.getElementById('drop-zone-2');
+const dropZone = document.getElementById('drop-zone');
+const fileList = document.getElementById('file-list');
 const downloadLink = document.getElementById('download-link');
 
-let file1 = null;
-let file2 = null;
+let files = [];
 
 // Prevent default drag behaviors
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone1.addEventListener(eventName, preventDefaults, false);
-    dropZone2.addEventListener(eventName, preventDefaults, false);
+    dropZone.addEventListener(eventName, preventDefaults, false);
 });
 
 function preventDefaults(e) {
@@ -20,13 +18,11 @@ function preventDefaults(e) {
 
 // Highlight drop zone when item is dragged over it
 ['dragenter', 'dragover'].forEach(eventName => {
-    dropZone1.addEventListener(eventName, highlight, false);
-    dropZone2.addEventListener(eventName, highlight, false);
+    dropZone.addEventListener(eventName, highlight, false);
 });
 
 ['dragleave', 'drop'].forEach(eventName => {
-    dropZone1.addEventListener(eventName, unhighlight, false);
-    dropZone2.addEventListener(eventName, unhighlight, false);
+    dropZone.addEventListener(eventName, unhighlight, false);
 });
 
 function highlight(e) {
@@ -38,81 +34,111 @@ function unhighlight(e) {
 }
 
 // Handle dropped files
-dropZone1.addEventListener('drop', handleDrop1, false);
-dropZone2.addEventListener('drop', handleDrop2, false);
+dropZone.addEventListener('drop', handleDrop, false);
 
-function handleDrop1(e) {
+function handleDrop(e) {
     const dt = e.dataTransfer;
-    const files = dt.files;
-    handleFiles1(files);
+    const droppedFiles = dt.files;
+    handleFiles(droppedFiles);
 }
 
-function handleDrop2(e) {
-    const dt = e.dataTransfer;
-    const files = dt.files;
-    handleFiles2(files);
-}
-
-function handleFiles1(files) {
-    if (files.length > 0 && files[0].type === 'application/pdf') {
-        file1 = files[0];
-        dropZone1.innerHTML = `<p>${file1.name}</p>`;
-        checkAndMerge();
+function handleFiles(droppedFiles) {
+  let newFiles = [];
+  for (let i = 0; i < droppedFiles.length; i++) {
+    if (droppedFiles[i].type === 'application/pdf') {
+      newFiles.push(droppedFiles[i]);
     } else {
       alert("Please only drop pdf files.");
     }
+  }
+
+  files = [...files, ...newFiles];
+
+  updateFileList();
 }
 
-function handleFiles2(files) {
-    if (files.length > 0 && files[0].type === 'application/pdf') {
-        file2 = files[0];
-        dropZone2.innerHTML = `<p>${file2.name}</p>`;
-        checkAndMerge();
-    } else {
-      alert("Please only drop pdf files.");
-    }
+function updateFileList() {
+    fileList.innerHTML = '';
+    files.forEach((file, index) => {
+        const listItem = document.createElement('li');
+        listItem.setAttribute('data-index', index);
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = file.name;
+        const removeButton = document.createElement('button');
+        removeButton.textContent = 'X';
+        removeButton.classList.add('remove-button');
+        removeButton.addEventListener('click', () => removeFile(index));
+        listItem.appendChild(nameSpan);
+        listItem.appendChild(removeButton);
+        fileList.appendChild(listItem);
+    });
+
+    $( "#file-list" ).sortable({
+        update: function(event, ui){
+          reorderFiles();
+        }
+      });
+    $( "#file-list" ).disableSelection();
+    checkAndMerge();
 }
 
-async function mergePDFs(pdfBytes1, pdfBytes2) {
+function removeFile(index) {
+  files.splice(index, 1);
+  updateFileList();
+}
+
+function reorderFiles(){
+  const orderedFiles = [];
+  const listItems = fileList.querySelectorAll('li');
+  listItems.forEach((item) => {
+    const index = item.getAttribute('data-index');
+    orderedFiles.push(files[index]);
+  })
+  files = orderedFiles;
+  updateFileList();
+}
+
+async function mergePDFs(pdfBytesArray) {
     const pdfDoc = await PDFDocument.create();
 
-    const pdf1 = await PDFDocument.load(pdfBytes1);
-    const pdf2 = await PDFDocument.load(pdfBytes2);
-
-    const copiedPages1 = await pdfDoc.copyPages(pdf1, pdf1.getPageIndices());
-    copiedPages1.forEach((page) => pdfDoc.addPage(page));
-
-    const copiedPages2 = await pdfDoc.copyPages(pdf2, pdf2.getPageIndices());
-    copiedPages2.forEach((page) => pdfDoc.addPage(page));
+    for (const pdfBytes of pdfBytesArray) {
+        const pdf = await PDFDocument.load(pdfBytes);
+        const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => pdfDoc.addPage(page));
+    }
 
     const mergedPdfBytes = await pdfDoc.save();
     return mergedPdfBytes;
 }
 
 async function checkAndMerge() {
-    if (file1 && file2) {
-        const reader1 = new FileReader();
-        const reader2 = new FileReader();
+    if (files.length > 0) {
+        const readerPromises = files.map((file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    resolve(event.target.result);
+                };
+                reader.onerror = (error) => {
+                    reject(error);
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        });
 
-        reader1.onload = async (event) => {
-            const pdfBytes1 = event.target.result;
+        try {
+            const pdfBytesArray = await Promise.all(readerPromises);
+            const mergedPdfBytes = await mergePDFs(pdfBytesArray);
+            const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
 
-            reader2.onload = async (event) => {
-                const pdfBytes2 = event.target.result;
-
-                const mergedPdfBytes = await mergePDFs(pdfBytes1, pdfBytes2);
-
-                const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
-                const url = URL.createObjectURL(blob);
-
-                downloadLink.href = url;
-                downloadLink.style.display = 'block';
-                downloadLink.download = 'merged.pdf';
-            };
-
-            reader2.readAsArrayBuffer(file2);
-        };
-
-        reader1.readAsArrayBuffer(file1);
+            downloadLink.href = url;
+            downloadLink.style.display = 'block';
+            downloadLink.download = 'merged.pdf';
+        } catch (error) {
+            console.error('Error merging PDFs:', error);
+        }
+    } else {
+      downloadLink.style.display = 'none';
     }
 }
