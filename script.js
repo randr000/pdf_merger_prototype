@@ -1,4 +1,4 @@
-const { PDFDocument } = PDFLib;
+const { PDFDocument, rgb, degrees, StandardFonts } = PDFLib;
 
 const dropZone = document.getElementById('drop-zone');
 const fileList = document.getElementById('file-list');
@@ -43,13 +43,13 @@ function handleDrop(e) {
     handleFiles(droppedFiles);
 }
 
-function handleFiles(droppedFiles) {
+async function handleFiles(droppedFiles) {
   let newFiles = [];
   for (let i = 0; i < droppedFiles.length; i++) {
-    if (droppedFiles[i].type === 'application/pdf') {
+    if (droppedFiles[i].type === 'application/pdf' || droppedFiles[i].type.startsWith("image/")) {
       newFiles.push(droppedFiles[i]);
     } else {
-      alert("Please only drop pdf files.");
+      alert("Please only drop pdf or image files.");
     }
   }
 
@@ -103,9 +103,21 @@ async function mergePDFs(pdfBytesArray) {
     const pdfDoc = await PDFDocument.create();
 
     for (const pdfBytes of pdfBytesArray) {
+      if(typeof pdfBytes === "string"){
+        const imageBytes = await fetch(pdfBytes).then((res) => res.arrayBuffer());
+        const img = await pdfDoc.embedPng(imageBytes);
+        const page = pdfDoc.addPage([img.width, img.height]);
+        page.drawImage(img, {
+          x: 0,
+          y: 0,
+          width: img.width,
+          height: img.height
+        })
+      }else{
         const pdf = await PDFDocument.load(pdfBytes);
         const copiedPages = await pdfDoc.copyPages(pdf, pdf.getPageIndices());
         copiedPages.forEach((page) => pdfDoc.addPage(page));
+      }
     }
 
     const mergedPdfBytes = await pdfDoc.save();
@@ -123,15 +135,26 @@ function getFilename() {
 async function checkAndMerge() {
     if (files.length > 0) {
         const readerPromises = files.map((file) => {
-            return new Promise((resolve, reject) => {
+            return new Promise(async (resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    resolve(event.target.result);
-                };
-                reader.onerror = (error) => {
+                if(file.type.startsWith("image/")){
+                  reader.onload = (event) => {
+                    const imageUrl = event.target.result;
+                    resolve(imageUrl)
+                  }
+                  reader.onerror = (error) => {
                     reject(error);
-                };
-                reader.readAsArrayBuffer(file);
+                  };
+                  reader.readAsDataURL(file);
+                }else{
+                  reader.onload = (event) => {
+                      resolve(event.target.result);
+                  };
+                  reader.onerror = (error) => {
+                      reject(error);
+                  };
+                  reader.readAsArrayBuffer(file);
+                }
             });
         });
 
