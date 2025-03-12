@@ -3,6 +3,7 @@ const { PDFDocument } = PDFLib;
 const dropZone = document.getElementById('drop-zone');
 const fileList = document.getElementById('file-list');
 const downloadLink = document.getElementById('download-link');
+const filenameInput = document.getElementById('filename');
 
 let files = [];
 
@@ -79,7 +80,7 @@ function updateFileList() {
         }
       });
     $( "#file-list" ).disableSelection();
-    checkAndMerge();
+    updateDownloadLink();
 }
 
 function removeFile(index) {
@@ -111,6 +112,14 @@ async function mergePDFs(pdfBytesArray) {
     return mergedPdfBytes;
 }
 
+function getFilename() {
+    let filename = filenameInput.value.trim();
+    if (!filename) {
+        filename = 'merged';
+    }
+    return filename + '.pdf';
+}
+
 async function checkAndMerge() {
     if (files.length > 0) {
         const readerPromises = files.map((file) => {
@@ -134,7 +143,6 @@ async function checkAndMerge() {
 
             downloadLink.href = url;
             downloadLink.style.display = 'block';
-            downloadLink.download = 'merged.pdf';
         } catch (error) {
             console.error('Error merging PDFs:', error);
         }
@@ -142,3 +150,13 @@ async function checkAndMerge() {
       downloadLink.style.display = 'none';
     }
 }
+
+function updateDownloadLink(){
+  checkAndMerge();
+  downloadLink.download = getFilename();
+}
+
+// Add an event listener to the filename input
+filenameInput.addEventListener('input', () => {
+    updateDownloadLink();
+});
